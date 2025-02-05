@@ -1,24 +1,27 @@
-import socket  # Biblioteca para comunicação entre cliente e servidor
+import socket
 
-# Função do cliente
-def cliente():
-    ip_servidor = "127.0.0.1"  # Endereço do servidor (localhost)
-    porta_servidor = 5555  # Porta usada pelo servidor
+HOST = 'localhost'
+PORT = 5000
 
-    conexao_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Cria um socket TCP/IP
-    conexao_servidor.connect((ip_servidor, porta_servidor))  # Conecta ao servidor
+def is_prime_range(number, start, end):
+    """Verifica se number é divisível por algum número no intervalo [start, end]"""
+    for i in range(start, end):
+        if number % i == 0:
+            return False
+    return True
 
-    while True:
-        numero = input("Digite um número (ou 'sair' para encerrar): ")  # Solicita um número ao usuário
-        if numero.lower() == "sair":
-            break  # Encerra o cliente se o usuário digitar "sair"
+# Conectar ao servidor
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect((HOST, PORT))
 
-        conexao_servidor.send(numero.encode())  # Envia o número ao servidor
-        resposta = conexao_servidor.recv(1024).decode()  # Recebe a resposta do servidor
-        print(f"Servidor: {resposta}")  # Exibe a resposta
+# Receber dados
+data = client.recv(1024).decode()
+number, start, end = map(int, data.split(','))
 
-    conexao_servidor.close()  # Fecha a conexão ao final
+# Processar se é primo na faixa designada
+if is_prime_range(number, start, end):
+    client.sendall("PRIME".encode())
+else:
+    client.sendall("NOT_PRIME".encode())
 
-# Executar o cliente
-if __name__ == "__main__":
-    cliente()
+client.close()

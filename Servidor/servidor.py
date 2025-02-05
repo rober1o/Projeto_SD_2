@@ -1,60 +1,52 @@
-import socket  # Biblioteca para comunicação entre cliente e servidor
-import threading  # Para permitir múltiplos clientes simultaneamente
-import math  # Para cálculos matemáticos (usado na verificação de primos)
+import socket
+import threading
+import random
 
-# Função para verificar se um número é primo
-def eh_primo(numero):
-    if numero < 2:
-        return False  # Números menores que 2 não são primos
-    if numero in (2, 3):
-        return True  # 2 e 3 são primos
-    if numero % 2 == 0 or numero % 3 == 0:
-        return False  # Números pares e múltiplos de 3 não são primos
+# Configurações do servidor
+HOST = 'localhost'
+PORT = 5000
+NUM_CLIENTS = 3  # Número de clientes esperados
 
-    divisor = 5
-    while divisor * divisor <= numero:  # Testa até a raiz quadrada do número
-        if numero % divisor == 0 or numero % (divisor + 2) == 0:
-            return False  # Se for divisível, não é primo
-        divisor += 6  # Testa apenas números na forma 6k ± 1
+# Gera um número grande
+BIG_NUMBER = random.getrandbits(50)  # Número aleatório de 50 bits
+print(f"Servidor gerou o número: {BIG_NUMBER}")
 
-    return True  # Se passou por todos os testes, é primo
+# Lista para armazenar conexões
+clients = []
 
-# Função para lidar com cada cliente
-def atender_cliente(conexao_cliente, endereco):
-    print(f"[+] Nova conexão de {endereco}")  # Mensagem informando uma nova conexão
+def handle_client(conn, addr, start, end):
+    """Função que delega um intervalo de verificação para um cliente"""
+    try:
+        conn.sendall(f"{BIG_NUMBER},{start},{end}".encode())  # Envia os dados
+        response = conn.recv(1024).decode()  # Aguarda resposta
+        if response == "NOT_PRIME":
+            print(f"Cliente {addr} detectou que {BIG_NUMBER} NÃO é primo!")
+            global is_prime
+            is_prime = False
+    finally:
+        conn.close()
 
-    while True:
-        try:
-            dados = conexao_cliente.recv(1024).decode()  # Recebe dados do cliente
-            if not dados:
-                break  # Encerra a conexão se não houver mais dados
+# Cria o socket do servidor
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((HOST, PORT))
+server.listen(NUM_CLIENTS)
 
-            numero = int(dados)  # Converte a entrada do cliente para um número inteiro
-            resultado = eh_primo(numero)  # Chama a função que verifica se é primo
+# Divide o intervalo de 2 até sqrt(BIG_NUMBER) entre os clientes
+import math
+is_prime = True
+step = math.isqrt(BIG_NUMBER) // NUM_CLIENTS
 
-            # Responde ao cliente se o número é primo ou não
-            resposta = f"{numero} é primo" if resultado else f"{numero} não é primo"
-            conexao_cliente.send(resposta.encode())  # Envia a resposta para o cliente
+for i in range(NUM_CLIENTS):
+    conn, addr = server.accept()
+    clients.append(conn)
+    start = 2 + i * step
+    end = start + step
+    threading.Thread(target=handle_client, args=(conn, addr, start, end)).start()
 
-        except Exception as erro:
-            print(f"Erro: {erro}")  # Exibe erros (se houver)
-            break  # Encerra a conexão em caso de erro
+# Aguarda todos os clientes finalizarem
+server.close()
 
-    conexao_cliente.close()  # Fecha a conexão do cliente
-    print(f"[-] Conexão encerrada com {endereco}")
-
-# Função principal do servidor
-def iniciar_servidor(ip="0.0.0.0", porta=5555):
-    servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Cria o socket do servidor
-    servidor.bind((ip, porta))  # Liga o servidor ao IP e porta
-    servidor.listen(5)  # Permite até 5 conexões simultâneas na fila
-    print(f"[*] Servidor rodando em {ip}:{porta}")
-
-    while True:
-        conexao_cliente, endereco = servidor.accept()  # Aceita uma nova conexão de cliente
-        thread = threading.Thread(target=atender_cliente, args=(conexao_cliente, endereco))
-        thread.start()  # Inicia uma nova thread para cada cliente
-
-# Executar o servidor
-if __name__ == "__main__":
-    iniciar_servidor()
+if is_prime:
+    print(f"O número {BIG_NUMBER} é primo!")
+else:
+    print(f"O número {BIG_NUMBER} NÃO é primo!")
