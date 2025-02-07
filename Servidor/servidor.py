@@ -14,7 +14,7 @@ server.listen()
 print("Servidor aguardando conexões de clientes...")
 
 clients = []
-clients_lock = threading.Lock()  # Para evitar problemas de concorrência
+clients_lock = threading.Lock()
 
 
 def accept_clients():
@@ -77,8 +77,10 @@ def distribute_task(number):
                     print(f"Cliente {conn.getpeername()} detectou que {number} NÃO é primo, divisor encontrado: {divisor}")
                     is_prime = False
                     break
-                else:
+                elif response == "PRIME":
                     print(f"Cliente {conn.getpeername()} não encontrou divisores no intervalo.")
+                else:
+                    print(f"Resposta inesperada do cliente {conn.getpeername()}: {response}")
             except Exception as e:
                 print(f"Erro ao receber resposta do cliente {conn.getpeername()}: {e}")
 

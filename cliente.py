@@ -44,6 +44,7 @@ while True:
                 continue
 
             try:
+                # Verifica se o formato recebido é válido
                 number, start, end = map(int, data.split(','))
                 print(f"Processando intervalo {start} - {end} para o número {number}")
                 result = check_prime(number, start, end)
