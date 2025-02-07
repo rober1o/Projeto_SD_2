@@ -3,8 +3,19 @@ import threading  # Biblioteca para lidar com threads (execução paralela)
 import math  # Biblioteca matemática, usada para calcular a raiz quadrada
 import time  # Biblioteca para medir tempo de execução
 from concurrent.futures import ThreadPoolExecutor  # Gerenciador de threads para tarefas paralelas
+
 # Define o endereço e porta do servidor
-HOST = '192.168.206.107'  
+HOST = '192.168.216.107'  
+PORT = 5000  
+
+# Cria um socket do servidorimport socket  # Biblioteca para comunicação via rede (sockets)
+import threading  # Biblioteca para lidar com threads (execução paralela)
+import math  # Biblioteca matemática, usada para calcular a raiz quadrada
+import time  # Biblioteca para medir tempo de execução
+from concurrent.futures import ThreadPoolExecutor  # Gerenciador de threads para tarefas paralelas
+
+# Define o endereço e porta do servidor
+HOST = '192.168.216.107'  
 PORT = 5000  
 
 # Cria um socket do servidor
@@ -170,75 +181,68 @@ def is_client_connected(conn):
 def distribute_task(number):
     """Função para distribuir a verificação de primalidade entre os clientes conectados"""
     
-    if number < 2:
+    if number < 2:  # Verifica se o número é válido
         print("O número deve ser maior ou igual a 2.")
         return
 
-    with clients_lock:
+    with clients_lock:  # Acessa a lista de clientes de forma segura
+        # Remove clientes desconectados antes de distribuir tarefas
         active_clients = [c for c in clients if is_client_connected(c[0])]
-
-    if not active_clients:
+    
+    if not active_clients:  # Se não houver clientes ativos, cancela a distribuição da tarefa
         print("Nenhum cliente disponível para processar a tarefa.")
         return
 
-    num_clients = len(active_clients)
+    num_clients = len(active_clients)  # Número de clientes disponíveis
     print(f"Distribuindo a tarefa para {num_clients} clientes ativos...")
 
-    is_prime = True  
-    start_time = time.perf_counter()
+    is_prime = True  # Assume que o número é primo até encontrar um divisor
+    start_time = time.perf_counter()  # Marca o início do tempo de execução
 
-    step = max(1, math.isqrt(number) // num_clients)
+    step = max(1, math.isqrt(number) // num_clients)  # Define o tamanho do intervalo para cada cliente
 
-    with ThreadPoolExecutor(max_workers=num_clients) as executor:
-        future_to_conn = {}
-
+    with ThreadPoolExecutor(max_workers=num_clients) as executor:  # Cria um pool de threads para gerenciar os clientes
+        future_to_conn = {}  # Dicionário para armazenar as tarefas enviadas aos clientes
+        
         for i, (conn, addr) in enumerate(active_clients):
-            start = 2 + i * step
-            end = min(start + step, math.isqrt(number) + 1)
-
-            if start >= end:
+            start = 2 + i * step  # Define o início do intervalo para o cliente
+            end = min(start + step, math.isqrt(number) + 1)  # Define o fim do intervalo
+            
+            if start >= end:  # Garante que o intervalo é válido
                 continue
 
             try:
+                # Envia a tarefa ao cliente e associa o futuro à conexão correspondente
                 future = executor.submit(send_task, conn, number, start, end)
                 future_to_conn[future] = conn
             except Exception as e:
-                print(f"Erro ao enviar tarefa para {addr}: {e}")
+                print(f"Erro ao enviar tarefa para o cliente {addr}: {e}")
 
-        for future in future_to_conn:
+        for future in future_to_conn:  # Processa as respostas dos clientes
             conn = future_to_conn[future]
             try:
-                response = future.result()
+                response = future.result()  # Obtém a resposta do cliente
                 
-                if response.startswith("NOT_PRIME"):
-                    divisor = response.split(",")[1]
+                if response.startswith("NOT_PRIME"):  # Se um cliente encontrou um divisor
+                    divisor = response.split(",")[1]  # Extrai o divisor encontrado
                     print(f"Cliente {conn.getpeername()} detectou que {number} NÃO é primo, divisor encontrado: {divisor}")
                     is_prime = False
-
-                    # 🚨 **Enviar "STOP" para todos os clientes imediatamente**
-                    for c, _ in active_clients:
-                        try:
-                            c.sendall(b"STOP")
-                        except Exception as e:
-                            print(f"Erro ao encerrar cliente {c.getpeername()}: {e}")
-                    
-                    break  # Interrompe a execução
-
-                elif response == "PRIME":
+                    break  # Para a execução, pois já sabemos que o número não é primo
+                
+                elif response == "PRIME":  # Cliente não encontrou divisores
                     print(f"Cliente {conn.getpeername()} não encontrou divisores no intervalo.")
                 
-                else:
+                else:  # Caso a resposta seja inválida
                     print(f"Resposta inesperada do cliente {conn.getpeername()}: {response}")
-
+            
             except Exception as e:
                 print(f"Erro ao receber resposta do cliente {conn.getpeername()}: {e}")
 
     print(f"O número {number} é primo!" if is_prime else f"O número {number} NÃO é primo!")
 
-    end_time = time.perf_counter()
-    elapsed_time = (end_time - start_time) * 1000
-    print(f"Tempo total de execução: {elapsed_time:.2f} milissegundos\n\n")
-
+    end_time = time.perf_counter()  # Marca o fim do tempo de execução
+    elapsed_time = (end_time - start_time) * 1000  # Calcula o tempo total em milissegundos
+    print(f"Tempo total de execução: {elapsed_time:.2f} milissegundos")
     print()
     print()
 

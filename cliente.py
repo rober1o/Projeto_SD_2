@@ -4,7 +4,7 @@ import math
 
 HOST = '192.168.206.107'
 PORT = 5000
-stop_processing = False  # Flag para parar o processamento globalmente
+
 
 def connect_to_server():
     """Tenta conectar ao servidor e retorna o socket conectado"""
@@ -19,22 +19,17 @@ def connect_to_server():
             print("Tentando reconectar em 5 segundos...")
             time.sleep(5)
 
+
 def check_prime(number, start, end):
     """Verifica se há algum divisor do número no intervalo especificado"""
-    global stop_processing
     for i in range(start, end):
-        if stop_processing:
-            return "STOPPED"
-
         if number % i == 0:
-            stop_processing = True  # Define flag para interromper
             return f"NOT_PRIME,{i}"
-    
     return "PRIME"
+
 
 while True:
     client_socket = connect_to_server()
-    stop_processing = False  # Reseta flag a cada reconexão
 
     try:
         while True:
@@ -49,7 +44,6 @@ while True:
 
             if data == "STOP":
                 print("Recebido comando STOP. Interrompendo processamento.")
-                stop_processing = True
                 continue  # Para imediatamente o processamento atual
 
             try:
@@ -61,7 +55,6 @@ while True:
 
                 if result.startswith("NOT_PRIME"):
                     print(f"Divisor encontrado: {result.split(',')[1]}, notificando o servidor...")
-                    stop_processing = True
                     break  # Para o loop para evitar processamento extra
 
             except ValueError:
