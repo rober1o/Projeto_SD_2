@@ -40,7 +40,7 @@ while True:
                 break
 
             if data == "PING":
-                client_socket.sendall(b"ALIVE")
+                # client_socket.sendall(b"ALIVE")
                 continue
 
             try:
