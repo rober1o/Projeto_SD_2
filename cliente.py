@@ -1,54 +1,59 @@
 import socket
+import time
 import math
 
-HOST = 'localhost'
+HOST = '192.168.1.158'
 PORT = 5000
 
-def is_prime_range(number, start, end):
-    """Verifica se number é divisível por algum número no intervalo [start, end]"""
+
+def connect_to_server():
+    """Tenta conectar ao servidor e retorna o socket conectado"""
+    while True:
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((HOST, PORT))
+            print("Conectado ao servidor!")
+            return client_socket
+        except Exception as e:
+            print(f"Erro ao conectar ao servidor: {e}")
+            print("Tentando reconectar em 5 segundos...")
+            time.sleep(5)
+
+
+def check_prime(number, start, end):
+    """Verifica se há algum divisor do número no intervalo especificado"""
     for i in range(start, end):
         if number % i == 0:
-            return i  # Retorna o divisor encontrado
-    return None  # Retorna None se não encontrar div3isores, ou seja, é primo
+            return f"NOT_PRIME,{i}"
+    return "PRIME"
 
-# Conectar ao servidor
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((HOST, PORT))
-
-print("Cliente conectado e aguardando tarefas...")
 
 while True:
+    client_socket = connect_to_server()
+
     try:
-        # Receber dados do servidor
-        data = client.recv(1024).decode()
-        
-        if not data:  # Se não houver dados, significa que o servidor desconectou
-            print("Servidor desconectado. Finalizando cliente...")
-            break
+        while True:
+            data = client_socket.recv(1024).decode()
 
-        # Parse dos dados recebidos (número, start e end)
-        try:
-            number, start, end = map(int, data.split(','))
-        except ValueError:
-            print("Formato inválido de dados recebidos. Ignorando...")
-            continue  # Pular iteração em caso de erro de formatação
+            if not data:
+                print("Conexão fechada pelo servidor.")
+                break
 
-        # Processar se o número é primo na faixa designada e encontrar divisor, se houver
-        divisor = is_prime_range(number, start, end)
+            if data == "PING":
+                client_socket.sendall(b"ALIVE")
+                continue
 
-        if divisor:
-            # Envia que não é primo e o divisor encontrado, com a informação do intervalo
-            client.sendall(f"NOT_PRIME,{divisor}".encode())
-        else:
-            # Envia que é primo, com a informação do intervalo
-            client.sendall("PRIME".encode())
-
-        # Aguarde pela próxima tarefa
-        print(f"Cliente completou a tarefa para o número {number}. Aguardando nova tarefa...")
+            try:
+                number, start, end = map(int, data.split(','))
+                print(f"Processando intervalo {start} - {end} para o número {number}")
+                result = check_prime(number, start, end)
+                client_socket.sendall(result.encode())
+            except ValueError:
+                print("Recebido um dado inválido do servidor.")
+                continue
 
     except Exception as e:
         print(f"Erro na comunicação com o servidor: {e}")
-        break
 
-# Fechar a conexão após o processamento
-client.close()
+    print("Reconectando...")
+    time.sleep(5)
