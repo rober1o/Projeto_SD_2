@@ -1,6 +1,5 @@
 import socket
 import time
-import math
 
 HOST = '192.168.206.107'
 PORT = 5000
@@ -37,14 +36,19 @@ while True:
 
             if not data:
                 print("Conexão fechada pelo servidor.")
-                break
+                break  # Sai do loop interno para tentar reconectar
 
             if data == "PING":
                 continue  # Mantém a conexão ativa
 
             if data == "STOP":
                 print("Recebido comando STOP. Interrompendo processamento.")
-                continue  # Para imediatamente o processamento atual
+                break  # Para o processamento atual
+
+            if data == "ABORT":
+                print("Recebido comando ABORT. Encerrando cliente.")
+                client_socket.close()  # Fecha a conexão com o servidor
+                exit()  # Encerra o cliente imediatamente
 
             try:
                 number, start, end = map(int, data.split(','))
