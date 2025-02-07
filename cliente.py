@@ -40,18 +40,25 @@ while True:
                 break
 
             if data == "PING":
-                # client_socket.sendall(b"ALIVE")
-                continue
+                continue  # Mantém a conexão ativa
+
+            if data == "STOP":
+                print("Recebido comando STOP. Interrompendo processamento.")
+                continue  # Para imediatamente o processamento atual
 
             try:
-                # Verifica se o formato recebido é válido
                 number, start, end = map(int, data.split(','))
                 print(f"Processando intervalo {start} - {end} para o número {number}")
+
                 result = check_prime(number, start, end)
                 client_socket.sendall(result.encode())
+
+                if result.startswith("NOT_PRIME"):
+                    print(f"Divisor encontrado: {result.split(',')[1]}, notificando o servidor...")
+                    break  # Para o loop para evitar processamento extra
+
             except ValueError:
                 print("Recebido um dado inválido do servidor.")
-                continue
 
     except Exception as e:
         print(f"Erro na comunicação com o servidor: {e}")
