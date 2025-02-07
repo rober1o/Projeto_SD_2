@@ -2,7 +2,7 @@ import socket
 import time
 import math
 
-HOST = '192.168.1.158'
+HOST = '192.168.206.107'
 PORT = 5000
 
 
